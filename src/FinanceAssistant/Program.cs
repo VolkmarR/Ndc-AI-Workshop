@@ -1,3 +1,4 @@
+using FinanceAssistant;
 using Pgvector;
 using FinanceAssistant.Data;
 using Microsoft.Extensions.Configuration;
@@ -21,11 +22,6 @@ services.AddChatClient(config);
 services.AddEmbeddingGenerator(config);
 
 var provider = services.BuildServiceProvider();
-
-var chatClient = provider.GetRequiredService<IChatClient>();
-
-var systemPrompt = await File.ReadAllTextAsync(
-    Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
 
 var embedder = provider.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
 
@@ -67,6 +63,13 @@ var chatOptions = new ChatOptions
 
 Console.WriteLine("Finance assistant. Type a message, or 'exit' to quit.");
 
+var chatClient = provider.GetRequiredService<IChatClient>();
+
+var systemPrompt = await File.ReadAllTextAsync(
+    Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
+
+var chatAgent = new ChatAgent(chatClient, chatOptions);
+
 while (true)
 {
     Console.Write("> ");
@@ -82,8 +85,11 @@ while (true)
         new(ChatRole.User, input)
     };
 
-    var response = await chatClient.GetResponseAsync(messages, chatOptions);
-    Console.WriteLine(response.Text);
+    // var response = await chatClient.GetResponseAsync(messages, chatOptions);
+    // Console.WriteLine(response.Text);
+
+    var reply = await chatAgent.RunTurnAsync(messages);
+    Console.WriteLine(reply);
 }
 
 return 0;

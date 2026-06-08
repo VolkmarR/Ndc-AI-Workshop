@@ -24,9 +24,11 @@ public static class ServiceCollectionExtensions
                     new OpenAIClientOptions { Endpoint = apiBase })
                 .GetChatClient(deployment)
                 .AsIChatClient()
-                .AsBuilder()
-                .UseFunctionInvocation()
-                .Build());
+                // Removed because we want to implement the agent loop ourselves
+                // .AsBuilder()
+                // .UseFunctionInvocation()
+                // .Build()
+            );
     }
 
     public static IServiceCollection AddEmbeddingGenerator(this IServiceCollection services, IConfiguration config)
