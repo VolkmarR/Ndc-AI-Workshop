@@ -25,9 +25,19 @@ public class ImportStatementTool
         "Import a bank statement CSV into the transactions database. " +
         "This tool MODIFIES the database. Only call it when the user explicitly asks to import, load, or upload a statement file. " +
         "The CSV can have any column names and separators — the tool will auto-detect the layout.")]
-    public async Task<object> ImportStatement(
-        [Description("Absolute path to the CSV file on disk. Example: '/Users/me/Downloads/statement.csv'.")] string filePath,
-        [Description("Skip rows that already exist in the database (matched by Date+Amount+Merchant+Description). Default true.")] bool skipDuplicates = true,
+    public Task<object> ImportStatement(
+        [Description("Absolute path to the CSV file on disk. Example: '/Users/me/Downloads/statement.csv'.")]
+        string filePath,
+        [Description(
+            "Skip rows that already exist in the database (matched by Date+Amount+Merchant+Description). Default true.")]
+        bool skipDuplicates = true,
+        CancellationToken ct = default)
+        => InternalImportStatement(filePath, skipDuplicates, null, ct);
+
+    public async Task<object> InternalImportStatement(
+        string filePath,
+        bool skipDuplicates = true,
+        string? displayFilePath = null,
         CancellationToken ct = default)
     {
         if (!File.Exists(filePath))
@@ -66,8 +76,8 @@ public class ImportStatementTool
             ? (await db.Transactions
                 .Select(t => new { t.Date, t.Amount, t.Merchant, t.Description })
                 .ToListAsync(ct))
-                .Select(t => HashKey(t.Date, t.Amount, t.Merchant, t.Description))
-                .ToHashSet(StringComparer.Ordinal)
+            .Select(t => HashKey(t.Date, t.Amount, t.Merchant, t.Description))
+            .ToHashSet(StringComparer.Ordinal)
             : new HashSet<string>(StringComparer.Ordinal);
 
         using var reader = new StreamReader(filePath);
@@ -76,7 +86,7 @@ public class ImportStatementTool
         await csv.ReadAsync();
         csv.ReadHeader();
 
-        int rowNumber = 1;
+        var rowNumber = 1;
         while (await csv.ReadAsync())
         {
             rowNumber++;
@@ -116,11 +126,13 @@ public class ImportStatementTool
 
                 // Category and Description (optional — empty string if column absent)
                 var category = mappings.CategoryColumn is not null
-                    && csv.TryGetField<string>(mappings.CategoryColumn, out var catVal)
-                    ? catVal ?? "" : "";
+                               && csv.TryGetField<string>(mappings.CategoryColumn, out var catVal)
+                    ? catVal ?? ""
+                    : "";
                 var description = mappings.DescriptionColumn is not null
-                    && csv.TryGetField<string>(mappings.DescriptionColumn, out var descVal)
-                    ? descVal ?? "" : "";
+                                  && csv.TryGetField<string>(mappings.DescriptionColumn, out var descVal)
+                    ? descVal ?? ""
+                    : "";
 
                 var key = HashKey(date, amount, merchant, description);
 
@@ -153,7 +165,7 @@ public class ImportStatementTool
 
         return new
         {
-            file = filePath,
+            file = displayFilePath ?? filePath,
             importedCount = imported.Count,
             skippedCount = skipped.Count,
             errorCount = errors.Count,
@@ -182,29 +194,29 @@ public class ImportStatementTool
         try
         {
             var prompt = $$"""
-                You are a CSV parser. Given the raw first lines of a bank statement file,
-                detect the column separator and identify which column corresponds to each of these fields:
-                  date, amount, merchant, category, description.
+                           You are a CSV parser. Given the raw first lines of a bank statement file,
+                           detect the column separator and identify which column corresponds to each of these fields:
+                             date, amount, merchant, category, description.
 
-                Raw lines (first line is the header):
-                {{string.Join("\n", rawLines)}}
+                           Raw lines (first line is the header):
+                           {{string.Join("\n", rawLines)}}
 
-                Respond with ONLY a JSON object:
-                {
-                  "delimiter":         "<the column separator character: comma, semicolon, tab, or pipe>",
-                  "dateColumn":        "<exact header name>",
-                  "amountColumn":      "<exact header name>",
-                  "merchantColumn":    "<exact header name>",
-                  "categoryColumn":    "<exact header name or null>",
-                  "descriptionColumn": "<exact header name or null>",
-                  "dateFormat":        "<.NET date format string>",
-                  "decimalSeparator":  "<'.' or ','>"
-                }
-                Rules: use the exact casing of the header name as it appears after splitting by the detected delimiter;
-                use null (not empty string) when a field has no matching column;
-                infer dateFormat from the sample date values; infer decimalSeparator from the amount sample values;
-                for delimiter use the literal character: "," or ";" or a tab character or "|".
-                """;
+                           Respond with ONLY a JSON object:
+                           {
+                             "delimiter":         "<the column separator character: comma, semicolon, tab, or pipe>",
+                             "dateColumn":        "<exact header name>",
+                             "amountColumn":      "<exact header name>",
+                             "merchantColumn":    "<exact header name>",
+                             "categoryColumn":    "<exact header name or null>",
+                             "descriptionColumn": "<exact header name or null>",
+                             "dateFormat":        "<.NET date format string>",
+                             "decimalSeparator":  "<'.' or ','>"
+                           }
+                           Rules: use the exact casing of the header name as it appears after splitting by the detected delimiter;
+                           use null (not empty string) when a field has no matching column;
+                           infer dateFormat from the sample date values; infer decimalSeparator from the amount sample values;
+                           for delimiter use the literal character: "," or ";" or a tab character or "|".
+                           """;
 
             var messages = new List<ChatMessage> { new(ChatRole.User, prompt) };
             var options = new ChatOptions { ResponseFormat = ChatResponseFormat.Json, MaxOutputTokens = 256 };
@@ -228,18 +240,25 @@ public class ImportStatementTool
 
             // Validate required columns exist in the header
             var headers = rawLines.Length > 0 ? rawLines[0].Split(delimiter) : [];
-            if (string.IsNullOrEmpty(dto.DateColumn) || !headers.Contains(dto.DateColumn, StringComparer.Ordinal)) return null;
-            if (string.IsNullOrEmpty(dto.AmountColumn) || !headers.Contains(dto.AmountColumn, StringComparer.Ordinal)) return null;
-            if (string.IsNullOrEmpty(dto.MerchantColumn) || !headers.Contains(dto.MerchantColumn, StringComparer.Ordinal)) return null;
-            if (string.IsNullOrEmpty(dto.DateFormat)) return null;
+            if (string.IsNullOrEmpty(dto.DateColumn) || !headers.Contains(dto.DateColumn, StringComparer.Ordinal))
+                return null;
+            if (string.IsNullOrEmpty(dto.AmountColumn) || !headers.Contains(dto.AmountColumn, StringComparer.Ordinal))
+                return null;
+            if (string.IsNullOrEmpty(dto.MerchantColumn) ||
+                !headers.Contains(dto.MerchantColumn, StringComparer.Ordinal))
+                return null;
+            if (string.IsNullOrEmpty(dto.DateFormat))
+                return null;
 
             // Optional columns: only keep if they actually exist in headers
             var categoryCol = !string.IsNullOrEmpty(dto.CategoryColumn)
-                && headers.Contains(dto.CategoryColumn, StringComparer.Ordinal)
-                ? dto.CategoryColumn : null;
+                              && headers.Contains(dto.CategoryColumn, StringComparer.Ordinal)
+                ? dto.CategoryColumn
+                : null;
             var descriptionCol = !string.IsNullOrEmpty(dto.DescriptionColumn)
-                && headers.Contains(dto.DescriptionColumn, StringComparer.Ordinal)
-                ? dto.DescriptionColumn : null;
+                                 && headers.Contains(dto.DescriptionColumn, StringComparer.Ordinal)
+                ? dto.DescriptionColumn
+                : null;
 
             var decimalSep = dto.DecimalSeparator == "," ? "," : ".";
 
@@ -276,13 +295,13 @@ public class ImportStatementTool
 
     private sealed class ColumnMappingsDto
     {
-        public string? Delimiter         { get; set; }
-        public string? DateColumn        { get; set; }
-        public string? AmountColumn      { get; set; }
-        public string? MerchantColumn    { get; set; }
-        public string? CategoryColumn    { get; set; }
+        public string? Delimiter { get; set; }
+        public string? DateColumn { get; set; }
+        public string? AmountColumn { get; set; }
+        public string? MerchantColumn { get; set; }
+        public string? CategoryColumn { get; set; }
         public string? DescriptionColumn { get; set; }
-        public string? DateFormat        { get; set; }
-        public string? DecimalSeparator  { get; set; }
+        public string? DateFormat { get; set; }
+        public string? DecimalSeparator { get; set; }
     }
 }

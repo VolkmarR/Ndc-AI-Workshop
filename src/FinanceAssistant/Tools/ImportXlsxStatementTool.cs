@@ -1,18 +1,13 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Text;
 using ClosedXML.Excel;
+using CsvHelper;
 
 namespace FinanceAssistant.Tools;
 
-public class ImportXlsxStatementTool
+public class ImportXlsxStatementTool(ImportStatementTool importStatementTool)
 {
-    private readonly ImportStatementTool _importStatementTool;
-
-    public ImportXlsxStatementTool(ImportStatementTool importStatementTool)
-    {
-        _importStatementTool = importStatementTool;
-    }
-
     [Description(
         "Import a bank statement Excel (.xlsx) file into the transactions database. " +
         "This tool MODIFIES the database. Only call it when the user explicitly asks to import, load, or upload a statement file. " +
@@ -32,50 +27,59 @@ public class ImportXlsxStatementTool
             };
         }
 
-        using var workbook = new XLWorkbook(filePath);
-        var worksheet = workbook.Worksheets.First();
-        var usedRange = worksheet.RangeUsed();
-
-        if (usedRange is null)
-            return new { error = "empty_sheet", hint = "The first worksheet contains no data." };
-
-        var firstRow = usedRange.FirstRow();
-        var lastRow = usedRange.LastRow();
-        var columnCount = usedRange.ColumnCount();
-
-        var headers = Enumerable.Range(1, columnCount)
-            .Select(c => firstRow.Cell(c).GetValue<string>())
-            .ToList();
-
-        var tempPath = Path.ChangeExtension(Path.GetTempFileName(), ".csv");
+        XLWorkbook workbook;
         try
         {
-            await using (var writer = new StreamWriter(tempPath, false, Encoding.UTF8))
-            {
-                await writer.WriteLineAsync(string.Join(",", headers.Select(CsvQuote)));
-
-                for (int r = 2; r <= usedRange.RowCount(); r++)
-                {
-                    var row = usedRange.Row(r);
-                    var values = Enumerable.Range(1, columnCount)
-                        .Select(c => CsvQuote(row.Cell(c).GetValue<string>()));
-                    await writer.WriteLineAsync(string.Join(",", values));
-                }
-            }
-
-            return await _importStatementTool.ImportStatement(tempPath, skipDuplicates, ct);
+            workbook = new XLWorkbook(filePath);
         }
-        finally
+        catch (Exception ex)
         {
-            if (File.Exists(tempPath))
-                File.Delete(tempPath);
+            return new { error = "invalid_xlsx", hint = ex.Message, path = filePath };
         }
-    }
 
-    private static string CsvQuote(string value)
-    {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-            return $"\"{value.Replace("\"", "\"\"")}\"";
-        return value;
+        using (workbook)
+        {
+            var worksheet = workbook.Worksheets.FirstOrDefault();
+            if (worksheet is null)
+                return new { error = "empty_workbook", hint = "The file contains no worksheets." };
+
+            var usedRange = worksheet.RangeUsed();
+            if (usedRange is null)
+                return new { error = "empty_sheet", hint = "The first worksheet contains no data." };
+
+            var firstRow = usedRange.FirstRow();
+            var columnCount = usedRange.ColumnCount();
+
+            var headers = Enumerable.Range(1, columnCount)
+                .Select(c => firstRow.Cell(c).GetValue<string>())
+                .ToList();
+
+            var tempPath = Path.ChangeExtension(Path.GetTempFileName(), ".csv");
+            try
+            {
+                await using (var sw = new StreamWriter(tempPath, false, Encoding.UTF8))
+                await using (var csv = new CsvWriter(sw, CultureInfo.InvariantCulture))
+                {
+                    foreach (var header in headers)
+                        csv.WriteField(header);
+                    await csv.NextRecordAsync();
+
+                    for (int r = 2; r <= usedRange.RowCount(); r++)
+                    {
+                        var row = usedRange.Row(r);
+                        for (int c = 1; c <= columnCount; c++)
+                            csv.WriteField(row.Cell(c).GetValue<string>());
+                        await csv.NextRecordAsync();
+                    }
+                }
+
+                return await importStatementTool.InternalImportStatement(tempPath, skipDuplicates, filePath, ct);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+        }
     }
 }
