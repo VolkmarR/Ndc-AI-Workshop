@@ -45,11 +45,13 @@ await using (var db = new FinanceDbContext())
     }
 }
 
+var chatClient = provider.GetRequiredService<IChatClient>();
+
 var convertCurrency = new ConvertCurrencyTool();
 var getCurrentTime = new CurrentTimeTool();
 var getTransactions = new GetTransactionsTool();
 var searchTransactions = new SearchTransactionsTool(embedder);
-var importStatementTool = new ImportStatementTool();
+var importStatementTool = new ImportStatementTool(chatClient);
 
 var chatOptions = new ChatOptions
 {
@@ -64,8 +66,6 @@ var chatOptions = new ChatOptions
 };
 
 Console.WriteLine("Finance assistant. Type a message, or 'exit' to quit.");
-
-var chatClient = provider.GetRequiredService<IChatClient>();
 
 var systemPrompt = await File.ReadAllTextAsync(
     Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
