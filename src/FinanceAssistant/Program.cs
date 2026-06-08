@@ -52,6 +52,7 @@ var getCurrentTime = new CurrentTimeTool();
 var getTransactions = new GetTransactionsTool();
 var searchTransactions = new SearchTransactionsTool(embedder);
 var importStatementTool = new ImportStatementTool(chatClient);
+var importXmlStatementTool = new ImportXmlStatementTool(importStatementTool);
 
 var chatOptions = new ChatOptions
 {
@@ -61,7 +62,8 @@ var chatOptions = new ChatOptions
         AIFunctionFactory.Create(getCurrentTime.GetCurrentTime),
         AIFunctionFactory.Create(getTransactions.GetTransactions),
         AIFunctionFactory.Create(searchTransactions.SearchTransactions),
-        AIFunctionFactory.Create(importStatementTool.ImportStatement)
+        AIFunctionFactory.Create(importStatementTool.ImportStatement),
+        AIFunctionFactory.Create(importXmlStatementTool.ImportXmlStatement)
     ]
 };
 

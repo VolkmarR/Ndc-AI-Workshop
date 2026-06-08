@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<Transaktionen>
+    <Transaktion>
+        <Datum>2026-06-16</Datum>
+        <Betrag>-15,50</Betrag>
+        <Beschreibung>Kinoticket</Beschreibung>
+        <Haendler>Yorck Kinos</Haendler>
+        <Kategorie>Entertainment</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-17</Datum>
+        <Betrag>-120,00</Betrag>
+        <Beschreibung>Wocheneinkauf</Beschreibung>
+        <Haendler>Rewe</Haendler>
+        <Kategorie>Groceries</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-18</Datum>
+        <Betrag>-4,50</Betrag>
+        <Beschreibung>Kaffee und Croissant</Beschreibung>
+        <Haendler>Bäckerei Meyer</Haendler>
+        <Kategorie>Restaurants</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-19</Datum>
+        <Betrag>-45,00</Betrag>
+        <Beschreibung>Monatsticket</Beschreibung>
+        <Haendler>BVG</Haendler>
+        <Kategorie>Transit</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-20</Datum>
+        <Betrag>-89,99</Betrag>
+        <Beschreibung>Laufschuhe</Beschreibung>
+        <Haendler>Zalando</Haendler>
+        <Kategorie>Shopping</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-21</Datum>
+        <Betrag>-35,20</Betrag>
+        <Beschreibung>Abendessen</Beschreibung>
+        <Haendler>Pizzeria Napoli</Haendler>
+        <Kategorie>Restaurants</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-22</Datum>
+        <Betrag>-12,99</Betrag>
+        <Beschreibung>Streaming-Abo</Beschreibung>
+        <Haendler>Netflix</Haendler>
+        <Kategorie>Entertainment</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-23</Datum>
+        <Betrag>-55,00</Betrag>
+        <Beschreibung>Tanken</Beschreibung>
+        <Haendler>Shell</Haendler>
+        <Kategorie>Transport</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-24</Datum>
+        <Betrag>-22,50</Betrag>
+        <Beschreibung>Friseurbesuch</Beschreibung>
+        <Haendler>Haarstudio Schmidt</Haendler>
+        <Kategorie>Personal Care</Kategorie>
+    </Transaktion>
+    <Transaktion>
+        <Datum>2026-06-25</Datum>
+        <Betrag>-8,00</Betrag>
+        <Beschreibung>Parkgebühr</Beschreibung>
+        <Haendler>Parkhaus Zentrum</Haendler>
+        <Kategorie>Transport</Kategorie>
+    </Transaktion>
+</Transaktionen>
