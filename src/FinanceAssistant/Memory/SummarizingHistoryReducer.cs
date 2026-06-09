@@ -36,7 +36,17 @@ public class SummarizingHistoryReducer
 
         var transcript = string.Join(
             "\n",
-            headToSummarise.Select(m => $"[{m.Role}] {m.Text}"));
+            headToSummarise.Select(m =>
+            {
+                var content = string.Join(" | ", m.Contents.Select(c => c switch
+                {
+                    TextContent t => t.Text,
+                    FunctionCallContent fc => $"[tool call: {fc.Name}({string.Join(", ", fc.Arguments?.Select(a => $"{a.Key}={a.Value}") ?? [])})]",
+                    FunctionResultContent fr => $"[tool result: {fr.Result}]",
+                    _ => c.ToString()
+                }));
+                return $"[{m.Role}] {content}";
+            }));
 
         var summaryRequest = new List<ChatMessage>
         {
