@@ -22,8 +22,29 @@ public class ChatAgent
         _store.AppendSystemMessage(systemPrompt);
     }
 
+    private bool HandleCommands(string input, out string text)
+    {
+        text = "";
+        input = input.Trim();
+        if (!input.StartsWith('/'))
+            return false;
+
+        if (input.Equals("/new", StringComparison.OrdinalIgnoreCase) ||
+            input.Equals("/clear", StringComparison.OrdinalIgnoreCase))
+        {
+            _store.Clear();
+            text = "Conversation cleared.";
+            return true;
+        }
+
+        return false;
+    }
+
     public async Task<string> RunTurnAsync(string input, CancellationToken ct = default)
     {
+        if (HandleCommands(input, out var commandResponse))
+            return commandResponse;
+
         _store.AppendUserMessage(input);
         for (var iteration = 1; iteration <= _maxIterations; iteration++)
         {

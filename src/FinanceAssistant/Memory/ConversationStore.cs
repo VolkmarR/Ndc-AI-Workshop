@@ -30,4 +30,11 @@ public class ConversationStore
     {
         _messages.Add(new ChatMessage(ChatRole.Tool, [content]));
     }
+
+    public void Clear()
+    {
+        var systemMessages = _messages.Where(m => m.Role == ChatRole.System).ToList();
+        _messages.Clear();
+        _messages.AddRange(systemMessages);
+    }
 }
