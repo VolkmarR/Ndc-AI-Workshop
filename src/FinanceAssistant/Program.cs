@@ -76,7 +76,8 @@ var systemPrompt = await File.ReadAllTextAsync(
     Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
 
 var store = new ConversationStore();
-var chatAgent = new ChatAgent(chatClient, chatOptions, store, systemPrompt);
+var reducer = new SummarizingHistoryReducer(chatClient);
+var chatAgent = new ChatAgent(chatClient, chatOptions, store, systemPrompt, reducer);
 
 while (true)
 {
