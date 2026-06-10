@@ -55,6 +55,7 @@ var searchTransactions = new SearchTransactionsTool(embedder);
 var importStatementTool = new ImportStatementTool(chatClient);
 var importXmlStatementTool = new ImportXmlStatementTool(importStatementTool);
 var importXlsxStatementTool = new ImportXlsxStatementTool(importStatementTool);
+var transferFunds = new TransferFundsTool();
 
 var chatOptions = new ChatOptions
 {
@@ -66,7 +67,8 @@ var chatOptions = new ChatOptions
         AIFunctionFactory.Create(searchTransactions.SearchTransactions),
         AIFunctionFactory.Create(importStatementTool.ImportStatement),
         AIFunctionFactory.Create(importXmlStatementTool.ImportXmlStatement),
-        AIFunctionFactory.Create(importXlsxStatementTool.ImportXlsxStatement)
+        AIFunctionFactory.Create(importXlsxStatementTool.ImportXlsxStatement),
+        new ApprovalRequiredAIFunction(AIFunctionFactory.Create(transferFunds.Transfer))
     ]
 };
 
