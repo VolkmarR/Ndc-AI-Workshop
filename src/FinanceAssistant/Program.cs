@@ -1,9 +1,8 @@
-using FinanceAssistant;
 using Pgvector;
 using FinanceAssistant.Data;
-using FinanceAssistant.Memory;
 using Microsoft.Extensions.Configuration;
 using FinanceAssistant.Tools;
+using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +40,7 @@ await using (var db = new FinanceDbContext())
         {
             unembedded[i].Embedding = new Vector(embeddings[i].Vector.ToArray());
         }
+
         await db.SaveChangesAsync();
         Console.WriteLine($"Embedded {unembedded.Count} transactions.");
     }
@@ -57,9 +57,15 @@ var importXmlStatementTool = new ImportXmlStatementTool(importStatementTool);
 var importXlsxStatementTool = new ImportXlsxStatementTool(importStatementTool);
 var transferFunds = new TransferFundsTool();
 
-var chatOptions = new ChatOptions
-{
-    Tools =
+var systemPrompt = await File.ReadAllTextAsync(
+    Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
+
+var agent = new ChatClientAgent(
+    chatClient,
+    systemPrompt,
+    name: "FinanceAssistant",
+    description: "Personal finance assistant",
+    tools:
     [
         AIFunctionFactory.Create(convertCurrency.Convert),
         AIFunctionFactory.Create(getCurrentTime.GetCurrentTime),
@@ -69,17 +75,11 @@ var chatOptions = new ChatOptions
         AIFunctionFactory.Create(importXmlStatementTool.ImportXmlStatement),
         AIFunctionFactory.Create(importXlsxStatementTool.ImportXlsxStatement),
         new ApprovalRequiredAIFunction(AIFunctionFactory.Create(transferFunds.Transfer))
-    ]
-};
+    ]);
+
+var session = await agent.CreateSessionAsync();
 
 Console.WriteLine("Finance assistant. Type a message, or 'exit' to quit.");
-
-var systemPrompt = await File.ReadAllTextAsync(
-    Path.Combine(AppContext.BaseDirectory, "Prompts", "SystemPrompt.md"));
-
-var store = new ConversationStore();
-var reducer = new SummarizingHistoryReducer(chatClient);
-var chatAgent = new ChatAgent(chatClient, chatOptions, store, systemPrompt, reducer);
 
 while (true)
 {
@@ -90,11 +90,12 @@ while (true)
         break;
     }
 
-    // var response = await chatClient.GetResponseAsync(messages, chatOptions);
-    // Console.WriteLine(response.Text);
+    await foreach (var update in agent.RunStreamingAsync(input, session))
+    {
+        Console.Write(update.Text);
+    }
 
-    var reply = await chatAgent.RunTurnAsync(input);
-    Console.WriteLine(reply);
+    Console.WriteLine();
 }
 
 return 0;
